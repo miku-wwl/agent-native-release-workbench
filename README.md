@@ -26,17 +26,28 @@ flowchart LR
 
 ## Local development
 
-Requirements: Node.js **22.22 or newer** and pnpm **10.29.1**. This checkout was installed with `npx --yes pnpm@10.29.1 install`.
+The framework requires Node.js **22.22 or newer**. The verified Windows runtime is **Node 24.22.1** with pnpm **10.29.1**. Node 26.5.0 reproduced a libuv process-exit crash when an Action forwarded to the running dev server. The app launcher uses an isolated Node 24 binary on Windows Node 26; it leaves the machine's global installation intact.
+
+If Windows currently runs Node 26, install the small runtime package locally (not a model or global tool):
 
 ```powershell
-Copy-Item .env.example .env
+npm install --prefix data/phase05/node24 --no-save --no-package-lock node-win-x64@24.22.1
+```
+
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 npx --yes pnpm@10.29.1 install --frozen-lockfile
 npx --yes pnpm@10.29.1 dev
 ```
 
 The development server prints its actual URL. The default `DATABASE_URL=pglite:./data/pglite` stores local database files under ignored `data/`; no cloud database is used. The app's local development authentication creates a throwaway developer identity. For standalone production, use the framework's supported authentication and persistent PostgreSQL setup; keep AIG private and separate.
 
-The generated Agent-Native CLI is included, but a successful workbench Action invocation through the CLI is not yet verified on this Windows checkout. The default `hello` Action emitted its result before the process exited with a libuv assertion, and the release action's positional JSON failed parsing. See the [Phase 0 test report](docs/PHASE0-TEST-REPORT.md).
+The CLI now enters the public Agent-Native `runScript` dispatcher directly, avoiding the Windows outer shell that corrupted positional JSON. File input is bounded to 64 KiB; `--json` writes structured Action output to stdout and diagnostics to stderr. Use a new release ID for each proposal:
+
+```powershell
+npx --yes pnpm@10.29.1 action hello --json
+npx --yes pnpm@10.29.1 action analyze-release --input-file tests/fixtures/release-ready.json --releaseId my-release-001 --json
+```
 
 For AIG planning, set `AIG_API_BASE_URL` to an isolated local AIG instance. The sample `.env.example` points to `http://127.0.0.1:8787`; never point this demo to a persistent personal AIG database. The action submits intent only and does not execute AIG plans.
 
@@ -46,9 +57,14 @@ For AIG planning, set `AIG_API_BASE_URL` to an isolated local AIG instance. The 
 npx --yes pnpm@10.29.1 typecheck
 npx --yes pnpm@10.29.1 agent-native:doctor
 npx --yes pnpm@10.29.1 test
+npx --yes pnpm@10.29.1 verify:cli
+npx --yes pnpm@10.29.1 verify:integration
+npx --yes pnpm@10.29.1 verify:model
 ```
 
-See [Phase 0 test report](docs/PHASE0-TEST-REPORT.md) for actual counts, the isolated AIG result, browser status, and the local-model Tool Calling result.
+The integration verifier requires the adjacent AIG checkout and its existing Python environment plus local Ollama with `phi4-mini:latest`. It starts its own loopback app/AIG processes and a dedicated database, verifies restart persistence, then stops only those processes. Runtime data, logs, model responses, and portable Node remain under ignored `data/phase05/`. The model probe currently exits 1 because phi4-mini returns text rather than a protocol tool call.
+
+See [Phase 0.5 test report](docs/PHASE05-TEST-REPORT.md) for commands, evidence, the manual browser checklist, and coverage limits. Phase 0 findings remain available in the older reports.
 
 ## Security and scope limits
 
@@ -57,7 +73,7 @@ See [Phase 0 test report](docs/PHASE0-TEST-REPORT.md) for actual counts, the iso
 - The CLI has one shared local data owner for safe analyze/list/plan calls. Approval and execution require the authenticated workbench or a framework-approved agent tool call. Direct CLI and raw HTTP requests are denied by the server-side guard.
 - Approval binds the saved plan digest and owner. The bounded final action only validates reference shape and records the result; it does not establish that referenced evidence exists.
 - AIG is constrained to a single read-only service inspection plan. AIG's other actions, durable execution path, database, authentication, and state remain in the separate AIG repository.
-- The installed local model generated a valid AIG plan in one integration call. Its Agent-Native Action Tool Calling did not pass the real-model check; no paid provider was used.
+- The installed local model generated valid AIG plans in isolated integration checks. Its Agent-Native Action Tool Calling did not pass the real-model check; no paid provider was used.
 
 ## Work disclosure
 
@@ -69,6 +85,6 @@ The separate `agentic-intent-gate` project predates this competition work. Its s
 
 Created in this repository during the competition period: the Agent-Native 0.220.0 scaffold, Release Decision Workbench UI, deterministic CI decision Action, Drizzle/PGlite proposal and audit schema, digest-bound server-side approval and local execution gate, strict AIG TypeScript adapter, tests, and Phase 0 evidence documents. The framework scaffold and pre-existing AIG are disclosed rather than represented as newly authored work.
 
-## Phase 0 status
+## Phase 0.5 status
 
-The final acceptance record is [here](docs/PHASE0-FINAL-ACCEPTANCE.md). Phase 0 is intentionally distinct from Phase 1. Do not treat this spike as production-ready release automation.
+**PARTIAL_LOCAL**: CLI, the real AIG adapter, restart persistence, and approval checks are verified. The local model Tool Calling gate is **FAIL**, and browser UI/E2E is **BLOCKED** because no supported browser surface is available after the earlier URL-confidence restriction. HTTP integration uses synthetic fixture consent and does not establish browser or human-approval evidence. See [recovery report](docs/PHASE05-RECOVERY-REPORT.md) and [final acceptance](docs/PHASE05-FINAL-ACCEPTANCE.md). Phase 1 has not started.

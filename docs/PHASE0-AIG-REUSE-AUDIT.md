@@ -1,6 +1,6 @@
 # Phase 0 AIG Reuse Audit
 
-Audit date: 2026-10-26. All reads against `D:\workshop\oct\agentic-intent-gate` were read-only. Its working tree was clean on `main`; HEAD was `7f635adf13f105cf4ed8408766c47e612048773c`. The v0.2.0 tag resolves to `7261fdd2f47d2b15fabe8faac527eeee37338eb1`; v0.3.0 resolves to `bb8e8fb1234128613a750bee17967b225072bb14`. The code under test is the v0.3.0 source. The repository's full current suite passed **1,626 tests, 5 deselected**. An isolated instance was started on `127.0.0.1:8787` with a SQLite file under the system temporary directory and no writes to the original AIG database.
+Audit date: 2026-10-26. All reads against the sibling `../agentic-intent-gate` checkout were read-only. Its working tree was clean on `main`; HEAD was `7f635adf13f105cf4ed8408766c47e612048773c`. The v0.2.0 tag resolves to `7261fdd2f47d2b15fabe8faac527eeee37338eb1`; v0.3.0 resolves to `bb8e8fb1234128613a750bee17967b225072bb14`. The code under test is the v0.3.0 source. The repository's full current suite passed **1,626 tests, 5 deselected**. An isolated instance was started on `127.0.0.1:8787` with a SQLite file under the system temporary directory and no writes to the original AIG database.
 
 ## Findings and reuse matrix
 
@@ -33,3 +33,9 @@ The current v0.3.0 source was separately tested; the v0.2.0 results were not use
 Option B, a selective TypeScript port, duplicates parsing and semantic validation while creating drift risk. Option C would avoid the AIG dependency but discard the existing tested intent-to-plan service. Both could reduce short-term operational coupling, but the audited API and isolated integration make the narrow Option A wrapper the lowest-risk evidence-backed choice for Phase 0.
 
 Operational limitations: both processes must run locally; the AIG worker uses the existing Ollama model; its response time can make UI planning slower than the deterministic release Action; and the AIG endpoint is not exposed beyond loopback. Cloud providers were not contacted. A later hosted design would need authenticated service-to-service transport, deployment operations, and independent threat review.
+
+## Phase 0.5 additional evidence — 2026-10-27
+
+The selected architecture is unchanged. The registered Workbench `plan-with-aig` Action was now invoked over authenticated HTTP and successfully traversed the actual TypeScript adapter to an owned AIG instance on `127.0.0.1:8795`, using an isolated database under ignored `data/phase05/integration/2026-10-26T17-01-33-872Z/`. It returned `PlanValidated`, one `get_service_record/1` step for `service-demo`, and `READ_ONLY`. The isolated AIG database hash was unchanged by planning. After stopping that owned backend, the Workbench returned a bounded `503/aig_unavailable` and performed no execution.
+
+The AIG source checkout remains clean and source/tests still match the v0.3.0 tag. Its full test suite was not rerun; the 1,626-pass result above remains historical. This new result establishes the **live adapter** gate, while React display and browser E2E remain BLOCKED. See `PHASE05-TEST-REPORT.md` for the distinction between controlled fixtures, live HTTP integration, and missing browser evidence.

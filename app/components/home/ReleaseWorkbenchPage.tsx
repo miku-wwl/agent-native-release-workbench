@@ -4,8 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, type FormEvent } from "react";
+import type { ReleaseInput } from "../../../server/release-domain";
 
-const SAMPLE_RELEASE = {
+type ReleaseInputForm = Omit<ReleaseInput, "failedTests" | "evidenceReferences"> & {
+  failedTests: string;
+  evidenceReferences: string;
+};
+
+const SAMPLE_RELEASE: ReleaseInputForm = {
   releaseId: "release-2026.10.26.1",
   serviceName: "payments-api",
   ciStatus: "PASS" as const,
@@ -13,8 +19,6 @@ const SAMPLE_RELEASE = {
   errorSummary: "Synthetic fixture: no error summary supplied.",
   evidenceReferences: "ci://run/4831\ntests://suite/4831",
 };
-
-type ReleaseInputForm = typeof SAMPLE_RELEASE;
 
 const statusTone: Record<string, string> = {
   READY: "border-primary/30 bg-primary/10 text-primary",
@@ -78,6 +82,7 @@ export function ReleaseWorkbenchPage() {
 
   async function submitRelease(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     setActionError("");
     const failedTests = Number(form.failedTests);
     if (!Number.isInteger(failedTests) || failedTests < 0) {
@@ -107,6 +112,7 @@ export function ReleaseWorkbenchPage() {
     operation: "approve" | "reject" | "execute",
     releaseId: string,
   ) {
+    if (pending) return;
     setActionError("");
     try {
       if (operation === "approve") await approve.mutateAsync({ releaseId });
@@ -121,6 +127,7 @@ export function ReleaseWorkbenchPage() {
 
   async function requestAigPlan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (plan.isPending) return;
     setAigError("");
     setAigResult(null);
     try {
@@ -140,7 +147,7 @@ export function ReleaseWorkbenchPage() {
             Turn supplied CI facts into a deterministic decision, review the saved plan, then approve or reject its local reference validation.
           </p>
         </div>
-        <Button type="button" variant="outline" onClick={() => setForm(SAMPLE_RELEASE)}>
+        <Button type="button" variant="outline" disabled={pending} onClick={() => setForm(SAMPLE_RELEASE)}>
           Load synthetic sample
         </Button>
       </header>
@@ -242,8 +249,29 @@ export function ReleaseWorkbenchPage() {
             {activeRelease ? <Badge value={activeRelease.decision} /> : null}
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
+            {workQuery.data?.releases.length ? (
+              <div>
+                <Label htmlFor="saved-release">Saved release</Label>
+                <select
+                  id="saved-release"
+                  className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={activeRelease?.releaseId ?? ""}
+                  onChange={(event) => setSelectedReleaseId(event.target.value)}
+                  disabled={pending}
+                >
+                  {workQuery.data.releases.map((release) => (
+                    <option key={release.id} value={release.releaseId}>{release.releaseId} · {release.status}</option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             {workQuery.isPending ? (
               <p className="text-sm text-muted-foreground">Loading saved releases…</p>
+            ) : workQuery.isError ? (
+              <div role="alert" className="text-sm text-destructive">
+                <p>{workQuery.error instanceof Error ? workQuery.error.message : "Could not load saved releases."}</p>
+                <Button type="button" variant="outline" className="mt-2" onClick={() => void workQuery.refetch()}>Retry loading</Button>
+              </div>
             ) : activeRelease ? (
               <>
                 <div className="flex flex-wrap items-center gap-2">
@@ -296,6 +324,11 @@ export function ReleaseWorkbenchPage() {
                     {activeRelease.recommendedActions.map((action) => <li key={action}>{action}</li>)}
                   </ul>
                 </section>
+                <details className="rounded-lg border border-border p-3">
+                  <summary className="cursor-pointer text-sm font-semibold">Review saved plan</summary>
+                  <p className="mt-2 break-all font-mono text-xs text-muted-foreground">SHA-256: {activeRelease.planDigest}</p>
+                  <pre className="mt-3 max-h-72 overflow-auto rounded bg-muted p-3 text-xs">{JSON.stringify(activeRelease.plan, null, 2)}</pre>
+                </details>
                 {activeRelease.executionResult ? (
                   <section className="rounded-lg border border-border bg-muted/40 p-3">
                     <h2 className="text-sm font-semibold">Execution result</h2>

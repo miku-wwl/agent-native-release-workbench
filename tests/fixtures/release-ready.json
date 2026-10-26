@@ -1,0 +1,8 @@
+{
+  "releaseId": "phase05-cli-ready",
+  "serviceName": "payments-api",
+  "ciStatus": "PASS",
+  "failedTests": 0,
+  "errorSummary": "Synthetic Phase 0.5 fixture: quotes, spaces and Unicode 检查.",
+  "evidenceReferences": ["ci://phase05/run/1", "tests://phase05/suite/1"]
+}

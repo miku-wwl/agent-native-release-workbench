@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as schema from "../server/db/schema.js";
 import { releaseWorkbenchMigrations } from "../server/db/migrations.js";
 import type { ReleaseDb } from "../server/db/index.js";
+import { releaseAnalysisOutputSchema } from "../server/release-domain.js";
 import {
   approveRelease,
   analyzeAndSaveRelease,
@@ -59,7 +60,8 @@ describe("release persistence and approval guard (temporary in-memory PGlite)", 
   });
 
   it("executes once after exact-plan approval and records a non-deployment result", async () => {
-    await analyzeAndSaveRelease(releaseDb, input("release-approved"), owner);
+    const proposed = await analyzeAndSaveRelease(releaseDb, input("release-approved"), owner);
+    expect(() => releaseAnalysisOutputSchema.parse(proposed)).not.toThrow();
     await approveRelease(releaseDb, { releaseId: "release-approved", ownerEmail: owner, actor: owner });
     const executed = await executeRelease(releaseDb, {
       releaseId: "release-approved",

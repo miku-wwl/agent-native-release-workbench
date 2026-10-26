@@ -113,6 +113,7 @@ async function readBoundedBody(response: Response): Promise<string> {
   if (declared !== null) {
     const length = Number(declared);
     if (!Number.isSafeInteger(length) || length < 0 || length > MAX_RESPONSE_BYTES) {
+      await response.body?.cancel();
       throw new AigClientError(
         "aig_invalid_response",
         502,

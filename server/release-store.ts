@@ -196,7 +196,7 @@ export async function analyzeAndSaveRelease(
         409,
       );
     }
-    return result;
+    return { release: result.release, auditEvents: result.auditEvents };
   });
 }
 

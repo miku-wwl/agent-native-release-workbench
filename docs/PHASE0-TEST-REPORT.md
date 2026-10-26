@@ -21,7 +21,7 @@ Evidence captured 2026-10-26 (Auckland local time). Synthetic inputs only, excep
 
 - Read-only AIG source audit: main HEAD `7f635adf13f105cf4ed8408766c47e612048773c`; v0.2.0 tag `7261fdd2f47d2b15fabe8faac527eeee37338eb1`; v0.3.0 implementation commit `bb8e8fb1234128613a750bee17967b225072bb14`.
 - Full current AIG suite: `PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest -q -p no:cacheprovider` → **1,626 passed, 5 deselected**.
-- Isolated AIG server: `uv run --project D:\workshop\oct\agentic-intent-gate --no-sync python -m agentic_intent_gate.main`, bound to `127.0.0.1:8787`; its DB was `%TEMP%\agent-native-release-workbench-phase0-aig.sqlite3`.
+- Isolated AIG server: `uv run --project ../agentic-intent-gate --no-sync python -m agentic_intent_gate.main` from the Workbench root, bound to `127.0.0.1:8787`; its DB was `%TEMP%\agent-native-release-workbench-phase0-aig.sqlite3`.
 - Live request: `POST http://127.0.0.1:8787/api/plans`, body `{"text":"Read the service-demo record"}` → `PlanValidated`, one `get_service_record/1` step, `service-demo`, `READ_ONLY`, `error=null`. The planner used the existing `phi4-mini:latest` model over the loopback Ollama API. This is real backend integration, not a mocked response.
 - TypeScript adapter fixture tests additionally cover allowed loopback config, malformed/side-effect plan rejection, empty/overlong intent, timeout normalization, and unexpected backend errors. These fixture tests supplement the live call.
 - No AIG `/api/runs` call, write action, or user AIG database was used.
